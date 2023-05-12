@@ -7,6 +7,12 @@
                </div>
 
                <div class="flex flex-column gap-1">
+                    <label for="value" class="clickable-label">Slug</label>   
+                    <InputText required id="value" v-model="formData.slug" type="text" :class="{ 'p-invalid': errorMessages.name }" aria-describedby="text-error" />
+                    <small class="p-error" id="text-error" v-if="errorMessages.slug">{{ errorMessages.slug || '&nbsp;' }}</small>
+               </div>
+
+               <div class="flex flex-column gap-1">
                     <label for="amount" class="clickable-label">Amount</label>
                     <InputText required id="amount" v-model="formData.amount" type="number" :class="{ 'p-invalid': errorMessage }" aria-describedby="text-error" />
                     <small class="p-error" id="text-error" v-if="errorMessages.amount">{{ errorMessages.amount || '&nbsp;' }}</small>
@@ -45,6 +51,7 @@
 </template>
 
 <script setup>
+import { defineProps, watch } from 'vue';
 
 import InputText from 'primevue/inputtext';
 import Checkbox from 'primevue/checkbox';
@@ -73,6 +80,10 @@ const props = defineProps({
         type: Array,
         required: true
     }
+});
+
+watch(() => props.formData.name, (newValue, oldValue) => {
+    props.formData.slug = newValue.toLowerCase().replace(/ /g, '-');
 });
 
 </script>

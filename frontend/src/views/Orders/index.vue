@@ -2,15 +2,15 @@
 
 <template>
     <main class="datatable-container">
-        <DataTable v-model:selection="selectedOrders" lazy paginator :rows="10" :totalRecords="totalRecords"
-            :rowsPerPageOptions="[5, 10, 20, 50]" :value="orders.data" :loading="loading" @page="onPage($event)"
+        <DataTable v-model:selection="store.selectedOrders" lazy paginator :rows="10" :totalRecords="store.totalRecords"
+            :rowsPerPageOptions="[5, 10, 20, 50]" :value="store.orders.data" :loading="store.loading" @page="store.onPage($event)"
             dataKey="id" tableStyle="min-width: 50rem" class="p-datatable">
             <template #header>
                 <div class="flex align-items-center justify-content-between gap-2">
                     <div class="flex align-items-center gap-2">
                         <span class="text-xl text-900 font-bold">Orders</span>
-                        <div v-if="selectedOrders.length">
-                            <Button type="button" :label="`Selected ${selectedOrders.length}`"
+                        <div v-if="store.selectedOrders.length">
+                            <Button type="button" :label="`Selected ${store.selectedOrders.length}`"
                                 @click="toggle($event, 'menu')" aria-haspopup="true" aria-controls="overlay_menu1"
                                 size="small" />
                             <Menu ref="menu" id="overlay_menu1" :model="menuItems" :popup="true" />
@@ -43,14 +43,14 @@
             </Column>
             <Column header="Is Active">
                 <template #body="slotProps">
-                    <Tag :value="getIsActiveStatus(slotProps.data.is_active).text"
-                        :severity="getIsActiveStatus(slotProps.data.is_active).severity" />
+                    <Tag :value="store.getIsActiveStatus(slotProps.data.is_active).text"
+                        :severity="store.getIsActiveStatus(slotProps.data.is_active).severity" />
                 </template>
             </Column>
             <Column header="Status">
                 <template #body="slotProps">
-                    <Tag :value="getOrderStatus(slotProps.data.status).text"
-                        :severity="getOrderStatus(slotProps.data.status).severity" />
+                    <Tag :value="store.getOrderStatus(slotProps.data.status).text"
+                        :severity="store.getOrderStatus(slotProps.data.status).severity" />
                 </template>
             </Column>
             <Column field="amount" header="Amount">
@@ -77,7 +77,7 @@
                     </div>
                 </template>
             </Column>
-            <template #footer> In total there are {{ orders.data ? orders.data.length : 0 }} orders. </template>
+            <template #footer> In total there are {{ store.orders ? store.orders.total : 0 }} orders. </template>
         </DataTable>
     </main>
 </template>
@@ -87,28 +87,27 @@ import { ref, onMounted } from 'vue';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Tag from 'primevue/tag';
-import axios from 'axios';
-import Menu from 'primevue/menu';         // optional
+import Menu from 'primevue/menu';     
+import { useOrdersStore } from '@/stores/orders'
 
-const orders = ref([]);
-const selectedOrders = ref([]);
+// access the `store` variable anywhere in the component ✨
+const store = useOrdersStore()
+
 const menu = ref(null);
 const commonMenu = ref(null);
-const totalRecords = ref(0);
-const loading = ref(false);
 const menuItems = ref([
     {
         label: 'Delete',
         icon: 'pi pi-fw pi-times',
         command: () => {
-            itemAction(selectedOrders.value, 'delete');
+            store.itemAction(store.selectedOrders, 'delete');
         }
     },
     {
         label: 'Trash',
         icon: 'pi pi-fw pi-trash',
         command: () => {
-            itemAction(selectedOrders.value, 'trash');
+            store.itemAction(store.selectedOrders, 'trash');
         }
     },
 ]);
@@ -118,117 +117,52 @@ const commonMenuItems = ref([
         label: 'Delete All',
         icon: 'pi pi-fw pi-times',
         command: () => {
-            itemAction(null, 'delete-all');
+            store.itemAction(null, 'delete-all');
         }
     },
     {
         label: 'Trash All',
         icon: 'pi pi-fw pi-trash',
         command: () => {
-            itemAction(null, 'trash-all');
+            store.itemAction(null, 'trash-all');
         }
     },
     {
         label: 'Restore All',
         icon: 'pi pi-fw pi-undo',
         command: () => {
-            itemAction(null, 'restore-all');
+            store.itemAction(null, 'restore-all');
         }
     },
     {
         label: 'Active All',
         icon: 'pi pi-fw pi-check',
         command: () => {
-            itemAction(null, 'active-all');
+           store.itemAction(null, 'active-all');
         }
     },
     {
         label: 'Inactive All',
         icon: 'pi pi-fw pi-times',
         command: () => {
-            itemAction(null, 'inactive-all');
+            store.itemAction(null, 'inactive-all');
         }
     },
 ]);
 
-
-
 //---------------onMounted
 onMounted(() => {
-    // getList();
-    loadLazyData();
+    store.getList();
 });
 
 //--------------methods
-
-function getIsActiveStatus(status) {
-    if (status) return { severity: 'success', text: 'Active' }
-    else return { severity: 'danger', text: 'Inactive' }
-}
-//---
-function getOrderStatus(status) {
-    status = status.toLowerCase();
-    switch (status) {
-        case 'pending':
-            return { severity: 'warning', text: 'Pending' }
-        case 'delivered':
-            return { severity: 'success', text: 'Delivered' }
-        case 'cancelled':
-            return { severity: 'danger', text: 'Cancelled' }
-        default:
-            return { severity: 'info', text: status }
-    }
-}
-//---
-const toggle = (event, menuTarget) => {
+function toggle(event, menuTarget) {
     if (menuTarget == 'menu') return menu.value.toggle(event);
     else return commonMenu.value.toggle(event);
 };
 
-//----
-
-function getList(page = 1) {
-    loading.value = true;
-    const url = `/api/orders?page=${page}`;
-    axios.get(url)
-        .then(response => {
-            orders.value = response.data.data;
-            totalRecords.value = response.data.data.total;
-        })
-        .catch(error => {
-            console.log('error', error);
-        }).finally(() => {
-            loading.value = false;
-        });
-}
 //---
 
-
-function loadLazyData() {
-    getList();
-};
-
-//---
-function onPage(event) {
-    const page = event.page + 1;
-    getList(page);
-};
-
-//---
-async function itemAction(items, type) {
-    try {
-        await axios.post('/api/orders/action', {
-            items: items,
-            type: type
-        });
-
-        getList();
-        selectedOrders.value = [];
-    } catch (error) {
-        console.log(error);
-    }
-
-}
 </script>
 
 <style scoped>
